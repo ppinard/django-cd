@@ -60,12 +60,15 @@ class Action(metaclass=abc.ABCMeta):
 
 
 class CommandAction(Action):
-    def __init__(self, name, args):
+    def __init__(self, name, args, shell=False):
         super().__init__(name)
         self.args = shlex.split(args)
+        self.shell = shell
 
     def _run(self, workdir):
-        process = subprocess.run(self.args, capture_output=True, cwd=workdir)
+        process = subprocess.run(
+            self.args, shell=self.shell, capture_output=True, cwd=workdir
+        )
 
         if process.returncode == 0:
             return (RunState.SUCCESS, process.stdout.decode("utf8"))
