@@ -3,4 +3,4 @@ django
 django-bootstrap5
 apscheduler
 loguru
-yaml
+pyyaml
