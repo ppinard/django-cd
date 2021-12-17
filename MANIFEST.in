@@ -1,0 +1,4 @@
+include versioneer.py
+include django_cd/_version.py
+recursive-include tests *.py
+include django_cd/_version.py

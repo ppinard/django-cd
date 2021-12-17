@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div hx-get="{% url 'django_cd:jobruns' %}?height=600" hx-trigger="load">
+    <div class="htmx-indicator spinner-border m-2" role="status"></div>
+</div>
+{% endblock %}

@@ -1,0 +1,13 @@
+name: Test
+
+triggers:
+  - uses: cron
+    expr: "* * * * *"
+
+actions:
+  - name: List files
+    uses: command
+    args: ls -la
+  - name: Run tests
+    uses: command
+    args: echo "hello"
