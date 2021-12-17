@@ -4,3 +4,4 @@ django-bootstrap5
 apscheduler
 loguru
 pyyaml
+pandas
