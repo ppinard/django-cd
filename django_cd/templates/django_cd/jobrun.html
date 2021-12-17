@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% load djangocd_extras %}
+
+{% block content %}
+<h3>{{ jobrun.name }}</h3>
+<p>{{ jobrun.state|state_adjective|title }} since {{ jobrun.started_on|timesince }}</p>
+
+<div class="accordion pt-3">
+    {% for actionrun in jobrun.actionruns.all %}
+        <div class="accordion-item">
+            <h2 class="accordion-header" id="panel-header-{{ actionrun.id }}">
+                <button class="accordion-button collapsed"
+                        type="button"
+                        data-bs-toggle="collapse"
+                        data-bs-target="#panel-body-{{ actionrun.id }}"
+                        aria-expanded="false"
+                        aria-controls="panel-body-{{ actionrun.id }}">
+                    #{{ forloop.counter }}: {{ actionrun.name }}
+                    <span class="badge {{ actionrun.state|state_background }} mx-1">{{ actionrun.state }}</span>
+                </button>
+            </h2>
+            <div id="panel-body-{{ actionrun.id }}"
+                    class="accordion-collapse collapse"
+                    aria-labelledby="panel-header-{{ actionrun.id }}">
+                <div class="accordion-body">
+                    <p class="text-end">
+                        <i class="bi bi-clock-history mx-2"></i>{{ actionrun.duration|duration:'phrase' }}
+                    </p>
+                    <pre><code>{{ actionrun.output|linebreaks }}</code></pre>
+                </div>
+            </div>
+        </div>
+    {% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,21 @@
+<div id="{{ id }}"></div>
+
+<script>
+const graph = JSON.parse('{{ graph | escapejs }}');
+
+const config = {};
+config['responsive'] = true;
+config['displayModeBar'] = false;
+{%if staticPlot %}
+    config['staticPlot'] = {{ staticPlot }};
+{% endif %}
+
+{%if 'width' in request.GET %}
+    graph.layout['width'] = "{{ request.GET.width }}";
+{% endif %}
+{%if 'height' in request.GET %}
+    graph.layout['height'] = "{{ request.GET.height }}";
+{% endif %}
+
+Plotly.newPlot("{{ id }}", graph.data, graph.layout, config);
+</script>
