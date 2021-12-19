@@ -1,6 +1,7 @@
 """"""
 
 # Standard library modules.
+import sys
 
 # Third party modules.
 from django.apps import AppConfig
@@ -17,6 +18,9 @@ class DjangoCdConfig(AppConfig):
     name = "django_cd"
 
     def ready(self):
+        if "runserver" not in sys.argv:
+            return
+
         from .jobs import Job
 
         self.scheduler = BackgroundScheduler()

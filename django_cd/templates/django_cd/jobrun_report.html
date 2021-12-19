@@ -1,0 +1,7 @@
+{% load djangocd_extras %}
+
+{% for actionrun in jobrun.actionruns.all %}
+    <h2>#{{ forloop.counter }}: {{ actionrun.name }} ({{ actionrun.state }})</h2>
+    <p>{{ jobrun.started_on }} - {{ actionrun.duration|duration }}<p>
+    <pre><code>{{ actionrun.output|linebreaks }}</code></pre>
+{% endfor %}

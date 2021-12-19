@@ -24,7 +24,7 @@
                     aria-labelledby="panel-header-{{ actionrun.id }}">
                 <div class="accordion-body">
                     <p class="text-end">
-                        <i class="bi bi-clock-history mx-2"></i>{{ actionrun.duration|duration:'phrase' }}
+                        <i class="bi bi-clock-history mx-2"></i>{{ actionrun.duration|duration }}
                     </p>
                     <pre><code>{{ actionrun.output|linebreaks }}</code></pre>
                 </div>
