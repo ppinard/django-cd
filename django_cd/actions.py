@@ -7,12 +7,16 @@ from pathlib import Path
 import shlex
 import subprocess
 import time
+import sys
+import io
 
 # Third party modules.
 import yarl
+import pytest
+from loguru import logger
 
 # Local modules.
-from .models import ActionRun, RunState
+from .models import ActionRun, RunState, TestResult
 
 # Globals and constants variables.
 
@@ -38,6 +42,7 @@ class Action(metaclass=abc.ABCMeta):
             state = self._run(workdir, outputs)
 
         except Exception as ex:
+            logger.exception(f"While running action {self.name}")
             state = RunState.ERROR
             outputs.append(str(ex))
 
@@ -52,6 +57,13 @@ class Action(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def _run(self, workdir, outputs):
         raise NotImplementedError
+
+    def add_testresult(self, name, state, duration):
+        if self._actionrun is None:
+            return
+        TestResult.objects.create(
+            name=name, actionrun=self._actionrun, state=state, duration=duration
+        )
 
 
 def _run_command(args, cwd, outputs, shell=False):
@@ -119,3 +131,47 @@ class GitCheckoutAction(Action):
             return RunState.FAILED
 
         return RunState.SUCCESS
+
+
+class _PytestPlugin:
+    STATE_LOOKUP = {
+        "passed": RunState.SUCCESS,
+        "failed": RunState.FAILED,
+        "skipped": RunState.SKIPPED,
+    }
+
+    def __init__(self, action):
+        self.action = action
+
+    def pytest_runtest_logreport(self, report):
+        if report.when != "call":
+            return
+
+        state = self.STATE_LOOKUP.get(report.outcome, RunState.NOT_STARTED)
+        self.action.add_testresult(
+            name=report.nodeid,
+            state=state,
+            duration=datetime.timedelta(seconds=report.duration),
+        )
+
+
+class PytestAction(Action):
+    def __init__(self, name, relpath=""):
+        super().__init__(name, relpath)
+
+    def _run(self, workdir, outputs):
+        buffer = io.StringIO()
+
+        try:
+            stdout = sys.stdout
+            sys.stdout = buffer
+
+            exitcode = pytest.main(
+                args=["-rA", str(workdir.resolve())],
+                plugins=[_PytestPlugin(self)],
+            )
+        finally:
+            sys.stdout = stdout
+
+        outputs += buffer.getvalue().splitlines()
+        return RunState.SUCCESS if exitcode == pytest.ExitCode.OK else RunState.FAILED

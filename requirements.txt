@@ -6,3 +6,4 @@ loguru
 pyyaml
 pandas
 yarl
+pytest

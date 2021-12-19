@@ -16,6 +16,7 @@ class RunState(models.TextChoices):
     ERROR = "error"
     FAILED = "failed"
     SUCCESS = "success"
+    SKIPPED = "skipped"
 
 
 class JobRun(models.Model):
@@ -38,3 +39,14 @@ class ActionRun(models.Model):
         max_length=12, choices=RunState.choices, default=RunState.NOT_STARTED
     )
     output = models.TextField(null=True)
+
+
+class TestResult(models.Model):
+    name = models.CharField(max_length=255)
+    actionrun = models.ForeignKey(
+        ActionRun, on_delete=models.CASCADE, related_name="testresults"
+    )
+    state = models.CharField(
+        max_length=12, choices=RunState.choices, default=RunState.NOT_STARTED
+    )
+    duration = models.DurationField()
