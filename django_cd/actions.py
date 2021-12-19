@@ -9,6 +9,7 @@ import subprocess
 import time
 
 # Third party modules.
+import yarl
 
 # Local modules.
 from .models import ActionRun, RunState
@@ -17,60 +18,104 @@ from .models import ActionRun, RunState
 
 
 class Action(metaclass=abc.ABCMeta):
-    def __init__(self, name):
+    def __init__(self, name, relpath=""):
         self.name = name
+        self.relpath = relpath
         self._actionrun = None
 
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__}({self.name})>"
 
     def run(self, jobrun, workdir):
-        workdir = Path(workdir)
+        workdir = Path(workdir).joinpath(self.relpath)
         self._actionrun = ActionRun.objects.create(
             name=self.name, jobrun=jobrun, state=RunState.RUNNING
         )
         start_time = time.time()
+        outputs = []
 
         try:
-            state, output = self._run(workdir)
+            state = self._run(workdir, outputs)
 
         except Exception as ex:
             state = RunState.ERROR
-            output = str(ex)
+            outputs.append(str(ex))
 
         end_time = time.time()
         self._actionrun.state = state
-        self._actionrun.output = output
+        self._actionrun.output = "\n".join(outputs)
         self._actionrun.duration = datetime.timedelta(seconds=end_time - start_time)
         self._actionrun.save(update_fields=["duration", "state", "output"])
 
         return state
 
     @abc.abstractmethod
-    def _run(self, workdir):
+    def _run(self, workdir, outputs):
         raise NotImplementedError
 
-    def add_artefact(self, filepath):
-        if self._actionrun is None:
-            raise RuntimeError
 
-    def add_testresult(self, name, state):
-        if self._actionrun is None:
-            raise RuntimeError
+def _run_command(args, cwd, outputs, shell=False):
+    outputs.append(f'> {" ".join(args)}')
+    process = subprocess.run(
+        args,
+        shell=shell,
+        capture_output=True,
+        cwd=cwd,
+    )
+
+    outputs += process.stdout.decode("utf8").splitlines()
+    outputs += process.stderr.decode("utf8").splitlines()
+
+    return process.returncode == 0
 
 
 class CommandAction(Action):
-    def __init__(self, name, args, shell=False):
-        super().__init__(name)
+    def __init__(self, name, args, shell=False, relpath=""):
+        super().__init__(name, relpath)
         self.args = shlex.split(args)
         self.shell = shell
 
-    def _run(self, workdir):
-        process = subprocess.run(
-            self.args, shell=self.shell, capture_output=True, cwd=workdir
-        )
+    def _run(self, workdir, outputs):
+        success = _run_command(self.args, workdir, outputs, self.shell)
+        return RunState.SUCCESS if success else RunState.FAILED
 
-        if process.returncode == 0:
-            return (RunState.SUCCESS, process.stdout.decode("utf8"))
-        else:
-            return (RunState.FAILED, process.stderr.decode("utf8"))
+
+class GitCheckoutAction(Action):
+    def __init__(self, name, repos_url, branch="master", relpath=""):
+        super().__init__(name, relpath)
+        self.repos_url = yarl.URL(repos_url)
+
+        self.repos_name = self.repos_url.name
+        self.repos_name = self.repos_name.rsplit(".")[0]
+
+        self.branch = branch
+
+    def _run(self, workdir, outputs):
+        reposdir = workdir.joinpath(self.repos_name)
+
+        # Clone
+        if not reposdir.joinpath(".git").exists():
+            args = ["git", "clone", reposdir.resolve()]
+            success = _run_command(args, workdir, outputs, shell=False)
+            if not success:
+                return RunState.FAILED
+
+        # Clean
+        args = ["git", "clean", "-xdf"]
+        success = _run_command(args, reposdir, outputs, shell=False)
+        if not success:
+            return RunState.FAILED
+
+        # Checkout
+        args = ["git", "checkout", self.branch]
+        success = _run_command(args, reposdir, outputs, shell=False)
+        if not success:
+            return RunState.FAILED
+
+        # Pull
+        args = ["git", "pull"]
+        success = _run_command(args, reposdir, outputs, shell=False)
+        if not success:
+            return RunState.FAILED
+
+        return RunState.SUCCESS
