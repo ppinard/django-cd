@@ -18,17 +18,21 @@ from .models import JobRun, RunState
 
 
 class Job:
-    def __init__(self, name, workdir, triggers=None, actions=None):
+    def __init__(self, name, workdir, triggers=None, actions=None, notifications=None):
         self.name = name
         self.workdir = workdir
 
         if triggers is None:
             triggers = []
-        self.triggers = list(triggers)
+        self.triggers = tuple(triggers)
 
         if actions is None:
             triggers = []
-        self.actions = list(actions)
+        self.actions = tuple(actions)
+
+        if notifications is None:
+            notifications = []
+        self.notifications = tuple(notifications)
 
     @classmethod
     def from_yaml(cls, filepath):
@@ -57,30 +61,40 @@ class Job:
             action = action_class(name=name, **action_kwargs)
             actions.append(action)
 
-        return cls(jobname, workdir, triggers, actions)
+        notifications = []
+        for notification_kwargs in d.get("notifications", []):
+            uses = notification_kwargs.pop("uses")
+
+            import_name = settings.NOTIFICATIONS[uses]
+            notification_class = import_string(import_name)
+            notification = notification_class(**notification_kwargs)
+            notifications.append(notification)
+
+        return cls(jobname, workdir, triggers, actions, notifications)
 
     def register(self, scheduler):
         for trigger in self.triggers:
             trigger.register(scheduler, self)
             logger.info(f"Registered trigger: {trigger}")
 
-    def run(self):
+    def run(self, notify=True):
         logger.info(f"Job: {self.name} ({self.workdir})")
         jobrun = JobRun.objects.create(name=self.name)
-        start_time = time.time()
 
+        # Run actions
+        start_time = time.time()
         nactions = len(self.actions)
         states = set()
         for i, action in enumerate(self.actions):
-            logger.info(f"  Action ({i+1}/{nactions}): {action.name}")
+            logger.info(f"  Action ({i+1}/{nactions}): {action}")
             state = action.run(jobrun, self.workdir)
             states.add(state)
-            logger.info(f"  Action ({i+1}/{nactions}): {action.name} ({state})")
+            logger.info(f"  Action ({i+1}/{nactions}): {action} ({state})")
 
         end_time = time.time()
         jobrun.duration = datetime.timedelta(seconds=end_time - start_time)
 
-        # State
+        # Determine job state
         if not states:
             jobrun.state = RunState.NOT_STARTED
         elif RunState.ERROR in states:
@@ -93,3 +107,9 @@ class Job:
             jobrun.state = RunState.SUCCESS
 
         jobrun.save(update_fields=["duration", "state"])
+
+        # Notifications
+        if notify:
+            for notification in self.notifications:
+                notification.notify(jobrun)
+                logger.info(f"  Notification: {notification}")

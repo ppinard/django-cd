@@ -15,3 +15,8 @@ actions:
   - name: Run tests
     uses: pytest
     relpath: matplotlib-scalebar
+
+notifications:
+  - uses: email
+    recipients:
+      - az8587259@gmail.com

@@ -26,4 +26,4 @@ class CronTrigger(Trigger):
 
     def register(self, scheduler, job):
         trigger = _CronTrigger.from_crontab(self.expr)
-        scheduler.add_job(job.run, trigger)
+        scheduler.add_job(job.run, trigger, id=job.name)
