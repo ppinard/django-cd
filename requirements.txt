@@ -5,3 +5,4 @@ apscheduler
 loguru
 pyyaml
 pandas
+yarl
