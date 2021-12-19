@@ -2,7 +2,7 @@ name: Test
 
 triggers:
   - uses: cron
-    expr: "* * * * *"
+    expr: "0 * * * *"
 
 actions:
   - name: List files
@@ -12,3 +12,6 @@ actions:
     uses: git-checkout
     repos_url: https://github.com/ppinard/matplotlib-scalebar.git
     branch: master
+  - name: Run tests
+    uses: pytest
+    relpath: matplotlib-scalebar
