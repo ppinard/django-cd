@@ -9,6 +9,8 @@ import subprocess
 import time
 import sys
 import io
+import venv
+import os
 
 # Third party modules.
 import yarl
@@ -81,7 +83,29 @@ def _run_command(args, cwd, outputs, shell=False):
     outputs += process.stdout.decode("utf8").splitlines()
     outputs += process.stderr.decode("utf8").splitlines()
 
-    return process.returncode == 0
+    return RunState.SUCCESS if process.returncode == 0 else RunState.FAILED
+
+
+def _run_python_command(args, cwd, outputs):
+    python_exe = os.environ.get("PYTHON_EXE", sys.executable)
+    args = [python_exe] + list(args)
+    return _run_command(args, cwd, outputs)
+
+
+class CaptureStdout(list):
+    """
+    https://stackoverflow.com/questions/16571150/how-to-capture-stdout-output-from-a-python-function-call
+    """
+
+    def __enter__(self):
+        self._stdout = sys.stdout
+        sys.stdout = self._stringio = io.StringIO()
+        return self
+
+    def __exit__(self, *args):
+        self.extend(self._stringio.getvalue().splitlines())
+        del self._stringio  # free up some memory
+        sys.stdout = self._stdout
 
 
 class CommandAction(Action):
@@ -91,8 +115,7 @@ class CommandAction(Action):
         self.shell = shell
 
     def _run(self, workdir, outputs):
-        success = _run_command(self.args, workdir, outputs, self.shell)
-        return RunState.SUCCESS if success else RunState.FAILED
+        return _run_command(self.args, workdir, outputs, self.shell)
 
 
 class GitCheckoutAction(Action):
@@ -110,33 +133,59 @@ class GitCheckoutAction(Action):
 
         # Clone
         if not reposdir.joinpath(".git").exists():
-            args = ["git", "clone", reposdir.resolve()]
-            success = _run_command(args, workdir, outputs, shell=False)
-            if not success:
-                return RunState.FAILED
+            args = ["git", "clone", str(self.repos_url)]
+            state = _run_command(args, workdir, outputs, shell=False)
+            if state != state.SUCCESS:
+                return state
 
         # Clean
         args = ["git", "clean", "-xdf"]
-        success = _run_command(args, reposdir, outputs, shell=False)
-        if not success:
-            return RunState.FAILED
+        state = _run_command(args, reposdir, outputs, shell=False)
+        if state != state.SUCCESS:
+            return state
 
         # Checkout
         args = ["git", "checkout", self.branch]
-        success = _run_command(args, reposdir, outputs, shell=False)
-        if not success:
-            return RunState.FAILED
+        state = _run_command(args, reposdir, outputs, shell=False)
+        if state != state.SUCCESS:
+            return state
 
         # Pull
         args = ["git", "pull"]
-        success = _run_command(args, reposdir, outputs, shell=False)
-        if not success:
-            return RunState.FAILED
+        state = _run_command(args, reposdir, outputs, shell=False)
 
-        return RunState.SUCCESS
+        return state
 
 
-class _PytestPlugin:
+class PythonVirtualEnvAction(Action):
+    def _run(self, workdir, outputs):
+        # Create environment
+        with CaptureStdout() as venv_ouputs:
+            builder = venv.EnvBuilder(clear=True, with_pip=True)
+            context = builder.ensure_directories(workdir)
+            builder.create(workdir)
+
+        outputs += venv_ouputs
+        os.environ["PYTHON_EXE"] = context.env_exe
+
+        # Update pip and setuptools
+        return _run_python_command(
+            ["-m", "pip", "install", "--upgrade", "pip", "setuptools", "wheel"],
+            workdir,
+            outputs,
+        )
+
+
+class PythonAction(Action):
+    def __init__(self, name, args, relpath=""):
+        super().__init__(name, relpath)
+        self.args = shlex.split(args)
+
+    def _run(self, workdir, outputs):
+        return _run_python_command(self.args, workdir, outputs)
+
+
+class PytestPlugin:
     STATE_LOOKUP = {
         "passed": RunState.SUCCESS,
         "failed": RunState.FAILED,
@@ -158,23 +207,12 @@ class _PytestPlugin:
         )
 
 
-class PytestAction(Action):
-    def __init__(self, name, relpath=""):
-        super().__init__(name, relpath)
-
+class PythonPytestAction(Action):
     def _run(self, workdir, outputs):
-        buffer = io.StringIO()
+        state = _run_python_command(
+            ["-m", "pip", "install", "-U", "pytest"], workdir, outputs
+        )
+        if state != RunState.SUCCESS:
+            return state
 
-        try:
-            stdout = sys.stdout
-            sys.stdout = buffer
-
-            exitcode = pytest.main(
-                args=["-rA", str(workdir.resolve())],
-                plugins=[_PytestPlugin(self)],
-            )
-        finally:
-            sys.stdout = stdout
-
-        outputs += buffer.getvalue().splitlines()
-        return RunState.SUCCESS if exitcode == pytest.ExitCode.OK else RunState.FAILED
+        return _run_python_command(["-m", "pytest", "-rA"], workdir, outputs)
