@@ -87,9 +87,14 @@ class Job:
         states = set()
         for i, action in enumerate(self.actions):
             logger.info(f"  Action ({i+1}/{nactions}): {action}")
+
             state = action.run(jobrun, self.workdir)
             states.add(state)
+
             logger.info(f"  Action ({i+1}/{nactions}): {action} ({state})")
+
+            if state != RunState.SUCCESS:
+                break
 
         end_time = time.time()
         jobrun.duration = datetime.timedelta(seconds=end_time - start_time)
