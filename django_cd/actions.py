@@ -8,13 +8,10 @@ import shlex
 import subprocess
 import time
 import sys
-import io
 import venv
-import os
 
 # Third party modules.
 import yarl
-import pytest
 from loguru import logger
 
 # Local modules.
@@ -35,7 +32,7 @@ class Action(metaclass=abc.ABCMeta):
     def __str__(self) -> str:
         return self.name
 
-    def run(self, jobrun, workdir):
+    def run(self, jobrun, workdir, env):
         workdir = Path(workdir).joinpath(self.relpath)
         self._actionrun = ActionRun.objects.create(
             name=self.name, jobrun=jobrun, state=RunState.RUNNING
@@ -44,7 +41,7 @@ class Action(metaclass=abc.ABCMeta):
         outputs = []
 
         try:
-            state = self._run(workdir, outputs)
+            state = self._run(workdir, outputs, env)
 
         except Exception as ex:
             logger.exception(f"While running action {self.name}")
@@ -60,7 +57,7 @@ class Action(metaclass=abc.ABCMeta):
         return state
 
     @abc.abstractmethod
-    def _run(self, workdir, outputs):
+    def _run(self, workdir, outputs, env):
         raise NotImplementedError
 
     def add_testresult(self, name, state, duration):
@@ -86,26 +83,10 @@ def _run_command(args, cwd, outputs, shell=False):
     return RunState.SUCCESS if process.returncode == 0 else RunState.FAILED
 
 
-def _run_python_command(args, cwd, outputs):
-    python_exe = os.environ.get("PYTHON_EXE", sys.executable)
+def _run_python_command(args, cwd, outputs, env):
+    python_exe = env.get("PYTHON_EXE", sys.executable)
     args = [python_exe] + list(args)
     return _run_command(args, cwd, outputs)
-
-
-class CaptureStdout(list):
-    """
-    https://stackoverflow.com/questions/16571150/how-to-capture-stdout-output-from-a-python-function-call
-    """
-
-    def __enter__(self):
-        self._stdout = sys.stdout
-        sys.stdout = self._stringio = io.StringIO()
-        return self
-
-    def __exit__(self, *args):
-        self.extend(self._stringio.getvalue().splitlines())
-        del self._stringio  # free up some memory
-        sys.stdout = self._stdout
 
 
 class CommandAction(Action):
@@ -114,7 +95,7 @@ class CommandAction(Action):
         self.args = shlex.split(args)
         self.shell = shell
 
-    def _run(self, workdir, outputs):
+    def _run(self, workdir, outputs, env):
         return _run_command(self.args, workdir, outputs, self.shell)
 
 
@@ -128,7 +109,7 @@ class GitCheckoutAction(Action):
 
         self.branch = branch
 
-    def _run(self, workdir, outputs):
+    def _run(self, workdir, outputs, env):
         reposdir = workdir.joinpath(self.repos_name)
 
         # Clone
@@ -158,21 +139,20 @@ class GitCheckoutAction(Action):
 
 
 class PythonVirtualEnvAction(Action):
-    def _run(self, workdir, outputs):
+    def _run(self, workdir, outputs, env):
         # Create environment
-        with CaptureStdout() as venv_ouputs:
-            builder = venv.EnvBuilder(clear=True, with_pip=True)
-            context = builder.ensure_directories(workdir)
-            builder.create(workdir)
+        builder = venv.EnvBuilder(clear=True, with_pip=True)
+        context = builder.ensure_directories(workdir)
+        builder.create(workdir)
 
-        outputs += venv_ouputs
-        os.environ["PYTHON_EXE"] = context.env_exe
+        env["PYTHON_EXE"] = context.env_exe
 
         # Update pip and setuptools
         return _run_python_command(
             ["-m", "pip", "install", "--upgrade", "pip", "setuptools", "wheel"],
             workdir,
             outputs,
+            env,
         )
 
 
@@ -181,38 +161,16 @@ class PythonAction(Action):
         super().__init__(name, relpath)
         self.args = shlex.split(args)
 
-    def _run(self, workdir, outputs):
-        return _run_python_command(self.args, workdir, outputs)
-
-
-class PytestPlugin:
-    STATE_LOOKUP = {
-        "passed": RunState.SUCCESS,
-        "failed": RunState.FAILED,
-        "skipped": RunState.SKIPPED,
-    }
-
-    def __init__(self, action):
-        self.action = action
-
-    def pytest_runtest_logreport(self, report):
-        if report.when != "call":
-            return
-
-        state = self.STATE_LOOKUP.get(report.outcome, RunState.NOT_STARTED)
-        self.action.add_testresult(
-            name=report.nodeid,
-            state=state,
-            duration=datetime.timedelta(seconds=report.duration),
-        )
+    def _run(self, workdir, outputs, env):
+        return _run_python_command(self.args, workdir, outputs, env)
 
 
 class PythonPytestAction(Action):
-    def _run(self, workdir, outputs):
+    def _run(self, workdir, outputs, env):
         state = _run_python_command(
-            ["-m", "pip", "install", "-U", "pytest"], workdir, outputs
+            ["-m", "pip", "install", "-U", "pytest"], workdir, outputs, env
         )
         if state != RunState.SUCCESS:
             return state
 
-        return _run_python_command(["-m", "pytest", "-rA"], workdir, outputs)
+        return _run_python_command(["-m", "pytest", "-rA"], workdir, outputs, env)
