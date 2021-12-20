@@ -13,12 +13,12 @@ import plotly
 # Globals and constants variables.
 
 
-def render_plotly(request, data, layout):
+def render_plotly(request, data, layout, template="plotly.html"):
     id = str(uuid.uuid4())
     graph = {"data": data, "layout": layout}
     return render(
         request,
-        "plotly.html",
+        template,
         context={
             "id": id,
             "graph": json.dumps(graph, cls=plotly.utils.PlotlyJSONEncoder),

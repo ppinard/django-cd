@@ -6,6 +6,7 @@ import datetime
 # Third party modules.
 from django import template
 from django.template.defaultfilters import pluralize
+from django.db.models import Count
 
 # Local modules.
 from django_cd.models import RunState
@@ -24,8 +25,9 @@ adjectives = {
     RunState.NOT_STARTED: "not started",
     RunState.RUNNING: "running",
     RunState.SUCCESS: "succeeded",
-    RunState.ERROR: "failed",
+    RunState.ERROR: "error",
     RunState.FAILED: "failed",
+    RunState.SKIPPED: "skipped",
 }
 
 
@@ -91,5 +93,20 @@ def duration(value):
                 plural_suffix=pluralize(seconds),
             )
         )
+
+    return ", ".join(response)
+
+
+@register.filter
+def testresult_summary(actionrun):
+    states = dict(
+        (item["state"], item["count"])
+        for item in actionrun.testresults.values("state").annotate(count=Count("state"))
+    )
+
+    response = []
+    for state in [RunState.SUCCESS, RunState.FAILED, RunState.ERROR, RunState.SKIPPED]:
+        if state in states:
+            response.append(f"{states[state]} {adjectives.get(state)}")
 
     return ", ".join(response)
