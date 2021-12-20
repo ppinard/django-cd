@@ -50,3 +50,4 @@ class TestResult(models.Model):
         max_length=12, choices=RunState.choices, default=RunState.NOT_STARTED
     )
     duration = models.DurationField()
+    output = models.TextField(null=True)

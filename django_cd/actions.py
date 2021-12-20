@@ -9,6 +9,8 @@ import subprocess
 import time
 import sys
 import venv
+import tempfile
+import xml.etree.ElementTree as ElementTree
 
 # Third party modules.
 import yarl
@@ -60,11 +62,15 @@ class Action(metaclass=abc.ABCMeta):
     def _run(self, workdir, outputs, env):
         raise NotImplementedError
 
-    def add_testresult(self, name, state, duration):
+    def add_testresult(self, name, state, duration, output):
         if self._actionrun is None:
             return
         TestResult.objects.create(
-            name=name, actionrun=self._actionrun, state=state, duration=duration
+            name=name,
+            actionrun=self._actionrun,
+            state=state,
+            duration=duration,
+            output=output,
         )
 
 
@@ -173,4 +179,31 @@ class PythonPytestAction(Action):
         if state != RunState.SUCCESS:
             return state
 
-        return _run_python_command(["-m", "pytest", "-rA"], workdir, outputs, env)
+        with tempfile.NamedTemporaryFile(suffix=".xml", delete=True) as tmpfp:
+            state = _run_python_command(
+                ["-m", "pytest", f"--junitxml={tmpfp.name}"], workdir, outputs, env
+            )
+            self._parse_junitxml(tmpfp.name)
+
+        return state
+
+    def _parse_junitxml(self, filepath):
+        root = ElementTree.parse(filepath).getroot()
+
+        for element in root.iterfind(".//testcase"):
+            name = f"{element.get('classname', '')}.{element.get('name', '')}"
+            duration = datetime.timedelta(seconds=float(element.get("time", 0.0)))
+
+            state = RunState.SUCCESS
+            output = ""
+            if element.find("error") is not None:
+                state = RunState.ERROR
+                output = element.findtext("error", "")
+            elif element.find("failure") is not None:
+                state = RunState.FAILED
+                output = element.findtext("failure", "")
+            elif element.find("skipped") is not None:
+                state = RunState.SKIPPED
+                output = element.findtext("skipped", "")
+
+            self.add_testresult(name, state, duration, output)
