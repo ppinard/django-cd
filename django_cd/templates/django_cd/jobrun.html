@@ -2,7 +2,7 @@
 {% load djangocd_extras %}
 
 {% block content %}
-<h3>{{ jobrun.name }}</h3>
+<h3>#{{ jobrun.id }}: {{ jobrun.name }}</h3>
 <p>{{ jobrun.state|state_adjective|title }} since {{ jobrun.started_on|timesince }}</p>
 
 <div class="accordion pt-3">
@@ -24,8 +24,15 @@
                     aria-labelledby="panel-header-{{ actionrun.id }}">
                 <div class="accordion-body">
                     <p class="text-end">
-                        <i class="bi bi-clock-history mx-2"></i>{{ actionrun.duration|duration }}
+                        <i class="bi bi-clock-history mx-2"></i> {{ actionrun.duration|duration }}
                     </p>
+
+                    {% if actionrun.testresults.count > 0 %}
+                    <p class="text-end">
+                        <i class="bi bi-clipboard-check"></i> {{ actionrun|testresult_summary }}
+                    </p>
+                    {% endif %}
+
                     <pre><code>{{ actionrun.output|linebreaks }}</code></pre>
                 </div>
             </div>
