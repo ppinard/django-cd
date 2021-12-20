@@ -51,8 +51,6 @@ def jobruns(request):
         axis="columns",
     )
 
-    print(df)
-
     xstart = df["started_on"].min()
     now = timezone.now()
 
