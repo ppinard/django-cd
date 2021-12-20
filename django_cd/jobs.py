@@ -85,10 +85,12 @@ class Job:
         start_time = time.time()
         nactions = len(self.actions)
         states = set()
+        env = {}
+
         for i, action in enumerate(self.actions):
             logger.info(f"  Action ({i+1}/{nactions}): {action}")
 
-            state = action.run(jobrun, self.workdir)
+            state = action.run(jobrun, self.workdir, env)
             states.add(state)
 
             logger.info(f"  Action ({i+1}/{nactions}): {action} ({state})")
