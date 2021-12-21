@@ -29,7 +29,7 @@ INSTALLED_APPS = [
 Add to settings.py:
 
 ```python
-CTIONS = {
+ACTIONS = {
     "command": "django_cd.actions.CommandAction",
     "git-checkout": "django_cd.actions.GitCheckoutAction",
     "python-run": "django_cd.actions.PythonAction",
