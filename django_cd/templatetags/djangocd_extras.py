@@ -16,9 +16,9 @@ from django_cd.models import RunState
 register = template.Library()
 
 backgrounds = {
-    RunState.SUCCESS: "bg-success",
-    RunState.ERROR: "bg-danger",
-    RunState.FAILED: "bg-danger",
+    RunState.SUCCESS: "-success",
+    RunState.ERROR: "-danger",
+    RunState.FAILED: "-danger",
 }
 
 adjectives = {
@@ -32,8 +32,8 @@ adjectives = {
 
 
 @register.filter
-def state_background(state):
-    return backgrounds.get(state, "bg-secondary")
+def state_style(state):
+    return backgrounds.get(state, "-secondary")
 
 
 @register.filter

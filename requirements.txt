@@ -1,9 +1,7 @@
-plotly
 django
 django-bootstrap5
 apscheduler
 loguru
 pyyaml
-pandas
 yarl
 pytest
