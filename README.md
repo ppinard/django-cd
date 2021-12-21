@@ -3,18 +3,10 @@
 ![GitHub Workflow Status](https://img.shields.io/github/workflow/status/ppinard/django-cd/CI)
 ![PyPI](https://img.shields.io/pypi/v/django-cd)
 
-Continuous deloyment
+Continuous deployment
 
 
 ## Installation
-
-Easiest way to install using *pip*:
-
-```
-pip install django-cd
-```
-
-For development installation from the git repository::
 
 ```
 git clone git@github.com/ppinard/django-cd.git
@@ -22,12 +14,38 @@ cd django-cd
 pip install -e .
 ```
 
-## Release notes
+## Django - settings.py
 
-### 0.1.0
+Add to `INSTALLED_APPS`:
 
+```python
+INSTALLED_APPS = [
+    ...
+    "django_bootstrap5",
+    "django_cd",
+]
+```
 
-## Contributors
+Add to settings.py:
+
+```python
+CTIONS = {
+    "command": "django_cd.actions.CommandAction",
+    "git-checkout": "django_cd.actions.GitCheckoutAction",
+    "python-run": "django_cd.actions.PythonAction",
+    "python-pytest": "django_cd.actions.PythonPytestAction",
+    "python-venv": "django_cd.actions.PythonVirtualEnvAction",
+}
+TRIGGERS = {
+    "cron": "django_cd.triggers.CronTrigger",
+}
+NOTIFICATIONS = {
+    "email": "django_cd.notifications.EmailNotification",
+}
+
+JOBFILES = []
+WORKDIR = ""
+```
 
 
 ## License
