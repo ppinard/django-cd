@@ -16,7 +16,7 @@
                         aria-expanded="false"
                         aria-controls="panel-body-{{ actionrun.id }}">
                     #{{ forloop.counter }}: {{ actionrun.name }}
-                    <span class="badge {{ actionrun.state|state_background }} mx-1">{{ actionrun.state }}</span>
+                    <span class="badge bg{{ actionrun.state|state_style }} mx-1">{{ actionrun.state }}</span>
                 </button>
             </h2>
             <div id="panel-body-{{ actionrun.id }}"

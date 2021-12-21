@@ -1,0 +1,47 @@
+{% load djangocd_extras %}
+
+<table class="table table-striped align-middle">
+    <thead>
+        <tr class="table-dark">
+            <th scope="col">Job name</th>
+            <th scope="col" class="text-center d-none d-md-table-cell">10</th>
+            <th scope="col" class="text-center d-none d-md-table-cell">9</th>
+            <th scope="col" class="text-center d-none d-md-table-cell">8</th>
+            <th scope="col" class="text-center d-none d-md-table-cell">7</th>
+            <th scope="col" class="text-center d-none d-md-table-cell">6</th>
+            <th scope="col" class="text-center d-none d-md-table-cell">5</th>
+            <th scope="col" class="text-center d-none d-md-table-cell">4</th>
+            <th scope="col" class="text-center">3</th>
+            <th scope="col" class="text-center">2</th>
+            <th scope="col" class="text-center">1</th>
+            <th scope="col" class="text-center">Action</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for name, jobruns in ordered_jobruns.items %}
+        <tr>
+            <th scope="row">{{ name }}</th>
+            {% for jobrun in jobruns reversed %}
+            <td class="text-center {% if forloop.counter0 < 7 %}d-none d-md-table-cell{% endif %}">
+
+            {%if jobrun.id %}
+            <a class="btn btn-circle btn{{ jobrun.state|state_style }}"
+                href="{% url 'django_cd:jobrun' jobrun.id %}"
+                data-bs-toggle="tooltip"
+                data-bs-placement="top"
+                data-bs-html="true"
+                title="Started on: {{ jobrun.started_on }}">
+                {% if jobrun.state == "success" %}
+                    <i class="bi bi-check"></i>
+                {% endif %}
+            </a>
+            {% endif %}
+            </td>
+            {% endfor %}
+            <td class="text-center">
+                <a class="btn btn-primary">Run</a>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
