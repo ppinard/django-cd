@@ -9,6 +9,7 @@ from django.conf import settings
 from apscheduler.schedulers.background import BackgroundScheduler
 
 # Local modules.
+from loguru import logger
 
 # Globals and constants variables.
 
@@ -26,8 +27,12 @@ class DjangoCdConfig(AppConfig):
         self.scheduler = BackgroundScheduler()
         self.scheduler.start()
 
-        self.jobs = []
+        self.jobs = {}
         for filepath in settings.JOBFILES:
             job = Job.from_yaml(filepath)
+            if job.name in self.jobs:
+                logger.error(r"Job {job.name} already added")
+                continue
+
             job.register(self.scheduler)
-            self.jobs.append(job)
+            self.jobs[job.name] = job

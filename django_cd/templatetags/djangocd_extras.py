@@ -19,6 +19,7 @@ backgrounds = {
     RunState.SUCCESS: "-success",
     RunState.ERROR: "-danger",
     RunState.FAILED: "-danger",
+    RunState.RUNNING: "-info",
 }
 
 adjectives = {
@@ -110,3 +111,8 @@ def testresult_summary(actionrun):
             response.append(f"{states[state]} {adjectives.get(state)}")
 
     return ", ".join(response)
+
+
+@register.filter
+def listrange(length, start=0):
+    return range(start, start + length)
