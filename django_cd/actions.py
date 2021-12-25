@@ -10,6 +10,7 @@ import time
 import sys
 import venv
 import tempfile
+import string
 import xml.etree.ElementTree as ElementTree
 
 # Third party modules.
@@ -35,10 +36,18 @@ class Action(metaclass=abc.ABCMeta):
         return self.name
 
     def run(self, jobrun, workdir, env):
-        workdir = Path(workdir).joinpath(self.relpath)
+        # Create ActionRun
         self._actionrun = ActionRun.objects.create(
             name=self.name, jobrun=jobrun, state=RunState.RUNNING
         )
+
+        # Update env
+        workdir = Path(workdir).joinpath(self.relpath)
+        env.update(
+            {"workdir": workdir, "jobname": jobrun.name, "actionname": self.name}
+        )
+
+        # Start
         start_time = time.time()
         outputs = []
 
@@ -50,6 +59,7 @@ class Action(metaclass=abc.ABCMeta):
             state = RunState.ERROR
             outputs.append(str(ex))
 
+        # Save ActionRun
         end_time = time.time()
         self._actionrun.state = state
         self._actionrun.output = "\n".join(outputs)
@@ -74,7 +84,11 @@ class Action(metaclass=abc.ABCMeta):
         )
 
 
-def _run_command(args, cwd, outputs, shell=False):
+def _run_command(args, cwd, outputs, env, shell=False):
+    # Interpolate args
+    args = [string.Template(arg).substitute(env) for arg in args]
+
+    # Run
     outputs.append(f'> {" ".join(args)}')
     process = subprocess.run(
         args,
@@ -83,6 +97,7 @@ def _run_command(args, cwd, outputs, shell=False):
         cwd=cwd,
     )
 
+    # Update outputs
     outputs += process.stdout.decode("utf8").splitlines()
     outputs += process.stderr.decode("utf8").splitlines()
 
@@ -92,7 +107,7 @@ def _run_command(args, cwd, outputs, shell=False):
 def _run_python_command(args, cwd, outputs, env):
     python_exe = env.get("PYTHON_EXE", sys.executable)
     args = [python_exe] + list(args)
-    return _run_command(args, cwd, outputs)
+    return _run_command(args, cwd, outputs, env, shell=False)
 
 
 class CommandAction(Action):
@@ -102,7 +117,7 @@ class CommandAction(Action):
         self.shell = shell
 
     def _run(self, workdir, outputs, env):
-        return _run_command(self.args, workdir, outputs, self.shell)
+        return _run_command(self.args, workdir, outputs, env, self.shell)
 
 
 class GitCheckoutAction(Action):
@@ -121,25 +136,25 @@ class GitCheckoutAction(Action):
         # Clone
         if not reposdir.joinpath(".git").exists():
             args = ["git", "clone", str(self.repos_url)]
-            state = _run_command(args, workdir, outputs, shell=False)
+            state = _run_command(args, workdir, outputs, env, shell=False)
             if state != state.SUCCESS:
                 return state
 
         # Clean
         args = ["git", "clean", "-xdf"]
-        state = _run_command(args, reposdir, outputs, shell=False)
+        state = _run_command(args, reposdir, outputs, env, shell=False)
         if state != state.SUCCESS:
             return state
 
         # Checkout
         args = ["git", "checkout", self.branch]
-        state = _run_command(args, reposdir, outputs, shell=False)
+        state = _run_command(args, reposdir, outputs, env, shell=False)
         if state != state.SUCCESS:
             return state
 
         # Pull
         args = ["git", "pull"]
-        state = _run_command(args, reposdir, outputs, shell=False)
+        state = _run_command(args, reposdir, outputs, env, shell=False)
 
         return state
 
