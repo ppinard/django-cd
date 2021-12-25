@@ -7,7 +7,7 @@ triggers:
 actions:
   - name: List files
     uses: command
-    args: ls -la
+    args: ls -la ${workdir}
   - name: Clone matplotlib-scalebar
     uses: git-checkout
     repos_url: https://github.com/ppinard/matplotlib-scalebar.git
@@ -29,4 +29,4 @@ actions:
 notifications:
   - uses: email
     recipients:
-      - az8587259@gmail.com
+      - philippe.pinard@gmail.com

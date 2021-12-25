@@ -79,7 +79,9 @@ class Job:
 
     def run(self, notify=True):
         logger.info(f"Job: {self.name} ({self.workdir})")
-        jobrun = JobRun.objects.create(name=self.name)
+
+        # Create JobRun
+        jobrun = JobRun.objects.create(name=self.name, state=RunState.RUNNING)
 
         # Run actions
         start_time = time.time()
@@ -88,18 +90,17 @@ class Job:
         env = {}
 
         for i, action in enumerate(self.actions):
-            logger.info(f"  Action ({i+1}/{nactions}): {action}")
+            logger.info(f"Action ({i+1}/{nactions}): {action}")
 
             state = action.run(jobrun, self.workdir, env)
             states.add(state)
 
-            logger.info(f"  Action ({i+1}/{nactions}): {action} ({state})")
+            logger.info(f"Action ({i+1}/{nactions}): {action} ({state})")
 
             if state != RunState.SUCCESS:
                 break
 
         end_time = time.time()
-        jobrun.duration = datetime.timedelta(seconds=end_time - start_time)
 
         # Determine job state
         if not states:
@@ -113,6 +114,8 @@ class Job:
         else:
             jobrun.state = RunState.SUCCESS
 
+        # Save JobRun
+        jobrun.duration = datetime.timedelta(seconds=end_time - start_time)
         jobrun.save(update_fields=["duration", "state"])
 
         # Notifications
