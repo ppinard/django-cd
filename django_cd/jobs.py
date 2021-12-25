@@ -123,3 +123,10 @@ class Job:
             for notification in self.notifications:
                 notification.notify(jobrun)
                 logger.info(f"  Notification: {notification}")
+
+    @property
+    def nextrun(self):
+        if not self.triggers:
+            return None
+
+        return min(trigger.nextrun for trigger in self.triggers)

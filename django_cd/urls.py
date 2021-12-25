@@ -15,4 +15,5 @@ urlpatterns = [
     path("", views.index, name="index"),
     path("jobruns", views.jobruns, name="jobruns"),
     path("jobruns/<int:id>", views.jobrun, name="jobrun"),
+    path("runjob", views.runjob, name="runjob"),
 ]

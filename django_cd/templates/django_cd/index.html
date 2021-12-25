@@ -2,7 +2,7 @@
 
 {% block content %}
 <h2>Continuous deployment</h2>
-<div hx-get="{% url 'django_cd:jobruns' %}" hx-trigger="load">
+<div hx-get="{% url 'django_cd:jobruns' %}" hx-trigger="load, every 600s">
     <div class="htmx-indicator spinner-border m-2" role="status"></div>
 </div>
 {% endblock %}
