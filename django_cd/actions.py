@@ -222,3 +222,54 @@ class PythonPytestAction(Action):
                 output = element.findtext("skipped", "")
 
             self.add_testresult(name, state, duration, output)
+
+
+class MsbuildAction(Action):
+    VSDEVCMD = r"%ProgramFiles(x86)%\Microsoft Visual Studio\2019\Entreprise\Common7\Tools\VsDevCmd.bat"
+
+    def __init__(
+        self,
+        name,
+        solution_filepath,
+        relpath="",
+        file_logger_parameters=None,
+        console_logger_parameters=None,
+        maxcpucount=1,
+        node_reuse=True,
+        verbosity="normal",
+        property=None,
+        target=None,
+    ):
+        super().__init__(name, relpath)
+        self.solution_filepath = solution_filepath
+        self.file_logger_parameters = file_logger_parameters
+        self.console_logger_parameters = console_logger_parameters
+        self.maxcpucount = maxcpucount
+        self.node_reuse = node_reuse
+        self.verbosity = verbosity
+        self.property = property
+        self.target = target
+
+    def _run(self, workdir, outputs, env):
+        state = _run_command([self.VSDEVCMD], workdir, outputs, env)
+        if state != RunState.SUCCESS:
+            return state
+
+        # Run msbuild
+        args = ["msbuild", self.solution_filepath]
+        if self.file_logger_parameters is not None:
+            args += ["/fl", f"/flp:{self.file_logger_parameters}"]
+        if self.console_logger_parameters is not None:
+            args += [f"/clp:{self.console_logger_parameters}"]
+        if self.maxcpucount is not None:
+            args += [f"/maxCpuCount:{self.maxCpuCount}"]
+        if self.node_reuse is not None:
+            args += [f"/nr:{self.nose_reuse}"]
+        if self.verbosity is not None:
+            args += [f"/v:{self.verbosity}"]
+        if self.property is not None:
+            args += [f"/p:{self.property}"]
+        if self.target is not None:
+            args += [f"/t:{self.target}"]
+
+        return _run_command(args, workdir, outputs, env)
