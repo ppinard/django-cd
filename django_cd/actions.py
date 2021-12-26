@@ -187,6 +187,10 @@ class PythonAction(Action):
 
 
 class PythonPytestAction(Action):
+    def __init__(self, name, args="", relpath=""):
+        super().__init__(name, relpath)
+        self.args = shlex.split(args)
+
     def _run(self, workdir, outputs, env):
         state = _run_python_command(
             ["-m", "pip", "install", "-U", "pytest"], workdir, outputs, env
@@ -195,9 +199,8 @@ class PythonPytestAction(Action):
             return state
 
         with tempfile.NamedTemporaryFile(suffix=".xml", delete=True) as tmpfp:
-            state = _run_python_command(
-                ["-m", "pytest", f"--junitxml={tmpfp.name}"], workdir, outputs, env
-            )
+            args = ["-m", "pytest", f"--junitxml={tmpfp.name}"] + self.args
+            state = _run_python_command(args, workdir, outputs, env)
             self._parse_junitxml(tmpfp.name)
 
         return state
