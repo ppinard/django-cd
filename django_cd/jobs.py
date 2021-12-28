@@ -72,9 +72,9 @@ class Job:
 
         return cls(jobname, workdir, triggers, actions, notifications)
 
-    def register(self, scheduler):
+    def register(self):
         for trigger in self.triggers:
-            trigger.register(scheduler, self)
+            trigger.register(self)
             logger.info(f"Registered trigger: {trigger}")
 
     def run(self, notify=True):

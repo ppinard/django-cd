@@ -6,7 +6,6 @@ import sys
 # Third party modules.
 from django.apps import AppConfig
 from django.conf import settings
-from apscheduler.schedulers.background import BackgroundScheduler
 
 # Local modules.
 from loguru import logger
@@ -24,15 +23,12 @@ class DjangoCdConfig(AppConfig):
 
         from .jobs import Job
 
-        self.scheduler = BackgroundScheduler()
-        self.scheduler.start()
-
         self.jobs = {}
         for filepath in settings.JOBFILES:
             job = Job.from_yaml(filepath)
             if job.name in self.jobs:
-                logger.error(r"Job {job.name} already added")
+                logger.error(f"Job {job.name} already added")
                 continue
 
-            job.register(self.scheduler)
+            job.register()
             self.jobs[job.name] = job

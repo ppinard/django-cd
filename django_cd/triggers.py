@@ -5,16 +5,18 @@ import abc
 
 # Third party modules.
 from django.utils import timezone
-from apscheduler.triggers.cron import CronTrigger as _CronTrigger
+import huey
+import crontab
 
 # Local modules.
+from .tasks import schedule_job
 
 # Globals and constants variables.
 
 
 class Trigger(metaclass=abc.ABCMeta):
     @abc.abstractmethod
-    def register(self, scheduler, job):
+    def register(self, job):
         raise NotImplementedError
 
     @abc.abstractproperty
@@ -29,11 +31,10 @@ class CronTrigger(Trigger):
     def __str__(self):
         return f"cron ({self.expr})"
 
-    def register(self, scheduler, job):
-        trigger = _CronTrigger.from_crontab(self.expr)
-        scheduler.add_job(job.run, trigger, id=job.name)
+    def register(self, job):
+        schedule_job(job, self.expr)
 
     @property
     def nextrun(self):
-        trigger = _CronTrigger.from_crontab(self.expr)
-        return trigger.get_next_fire_time(None, timezone.now())
+        cron = crontab.CronTab(self.expr)
+        return cron.next(timezone.now(), return_datetime=True)
