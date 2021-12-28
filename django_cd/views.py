@@ -71,6 +71,7 @@ def jobruns(request):
             "njobs": njobs,
             "available_jobs": app.jobs.keys(),
             "rows": rows,
+            "colwidth": int(85 / (njobs + 1)),
         },
     )
 

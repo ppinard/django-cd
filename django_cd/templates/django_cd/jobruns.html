@@ -21,12 +21,16 @@
             <th scope="col">Job name</th>
 
             {% for index in njobs|listrange:1 reversed %}
-            <th scope="col" class="text-center {% if index > 3 %}d-none d-md-table-cell{% endif %}">
+            <th scope="col"
+                    class="text-center {% if index > 3 %}d-none d-md-table-cell{% endif %}"
+                    style="width: {{ colwidth }}%">
                 {{ index }}
             </th>
             {% endfor %}
 
-            <th scope="col" class="text-center">Next</th>
+            <th scope="col"
+                class="text-center"
+                style="width: {{ colwidth }}%">Next</th>
         </tr>
     </thead>
     <tbody>
