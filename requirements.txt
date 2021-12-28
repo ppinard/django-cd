@@ -1,7 +1,8 @@
 django
 django-bootstrap5
-apscheduler
 loguru
 pyyaml
 yarl
 pytest
+huey
+crontab

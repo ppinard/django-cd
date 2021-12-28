@@ -9,6 +9,7 @@ from django.http import HttpResponse, HttpResponseBadRequest
 
 # Local modules.
 from .models import JobRun, RunState
+from .tasks import run_job
 
 # Globals and constants variables.
 colors = {
@@ -82,5 +83,5 @@ def runjob(request):
     if job is None:
         return HttpResponseBadRequest()
 
-    app.scheduler.add_job(job.run)
+    run_job.schedule((job,), delay=0)
     return HttpResponse(status=204, headers={"HX-Refresh": "true"})
