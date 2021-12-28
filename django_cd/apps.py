@@ -18,7 +18,7 @@ class DjangoCdConfig(AppConfig):
     name = "django_cd"
 
     def ready(self):
-        if "manage.py" in sys.argv and "runserver" not in sys.argv:
+        if any("manage.py" in sys.argv) and "runserver" not in sys.argv:
             return
 
         from .jobs import Job
