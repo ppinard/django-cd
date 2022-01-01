@@ -24,7 +24,7 @@ class DjangoCdConfig(AppConfig):
         from .jobs import Job
 
         self.jobs = {}
-        for filepath in settings.JOBFILES:
+        for filepath in getattr(settings, "JOBFILES", []):
             job = Job.from_yaml(filepath)
             if job.name in self.jobs:
                 logger.error(f"Job {job.name} already added")
