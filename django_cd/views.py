@@ -47,7 +47,7 @@ def _always_n(iterable, n):
             yield None
 
 
-def jobruns(request):
+def _create_jobruns_context(request):
     njobs = request.GET.get("njobs", 10)
     app = apps.get_app_config("django_cd")
 
@@ -72,14 +72,18 @@ def jobruns(request):
 
         rows.append([name, runs, nextrun])
 
+    return {
+        "njobs": njobs,
+        "rows": rows,
+        "colwidth": int(85 / (njobs + 1)),
+    }
+
+
+def jobruns(request):
     return render(
         request,
         "django_cd/jobruns.html",
-        context={
-            "njobs": njobs,
-            "rows": rows,
-            "colwidth": int(85 / (njobs + 1)),
-        },
+        context=_create_jobruns_context(request),
     )
 
 
