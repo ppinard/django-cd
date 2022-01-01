@@ -1,0 +1,32 @@
+name: Test
+
+triggers:
+  - uses: cron
+    expr: "0 * * * *"
+
+actions:
+  - name: List files
+    uses: command
+    args: ls -la ${workdir}
+  - name: Clone matplotlib-scalebar
+    uses: git-checkout
+    repos_url: https://github.com/ppinard/matplotlib-scalebar.git
+    branch: master
+  - name: Create virtual environment
+    uses: python-venv
+    relpath: env
+  - name: Python version
+    uses: python-run
+    args: --version
+  - name: Install
+    uses: python-run
+    args: -m pip install -e .
+    relpath: matplotlib-scalebar
+  - name: Run tests
+    uses: python-pytest
+    relpath: matplotlib-scalebar
+
+notifications:
+  - uses: email
+    recipients:
+      - abc@gmail.com
