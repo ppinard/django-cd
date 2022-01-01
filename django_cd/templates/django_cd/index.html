@@ -17,6 +17,7 @@
 {% block content %}
 <h2>Continuous deployment</h2>
 
+{% if available_jobs %}
 <div class="d-inline-flex align-items-center my-3">
     <span class="text-nowrap">Job</span>
     <select class="form-select form-select-sm mx-2" name="jobname">
@@ -31,6 +32,7 @@
         Force run
     </button>
 </div>
+{% endif %}
 
 <div hx-get="{% url 'django_cd:jobruns' %}" hx-trigger="load, every 600s">
     <div class="htmx-indicator spinner-border m-2" role="status"></div>
