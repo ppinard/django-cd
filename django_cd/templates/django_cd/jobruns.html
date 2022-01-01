@@ -1,20 +1,5 @@
 {% load djangocd_extras %}
 
-<div class="d-inline-flex align-items-center my-3">
-    <span class="text-nowrap">Job</span>
-    <select class="form-select form-select-sm mx-2" name="jobname">
-        {% for name in available_jobs %}
-        <option value="{{ name }}">{{ name }}</option>
-        {% endfor %}
-    </select>
-    <button type="button"
-            class="btn btn-primary btn-sm text-nowrap"
-            hx-post="{% url 'django_cd:runjob' %}"
-            hx-include="[name='jobname']">
-        Force run
-    </button>
-</div>
-
 <table class="table table-striped align-middle">
     <thead>
         <tr class="">

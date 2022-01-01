@@ -22,7 +22,15 @@ colors = {
 
 
 def index(request):
-    return render(request, "django_cd/index.html")
+    app = apps.get_app_config("django_cd")
+
+    return render(
+        request,
+        "django_cd/index.html",
+        context={
+            "available_jobs": app.jobs.keys(),
+        },
+    )
 
 
 def jobrun(request, id):
@@ -69,7 +77,6 @@ def jobruns(request):
         "django_cd/jobruns.html",
         context={
             "njobs": njobs,
-            "available_jobs": app.jobs.keys(),
             "rows": rows,
             "colwidth": int(85 / (njobs + 1)),
         },
