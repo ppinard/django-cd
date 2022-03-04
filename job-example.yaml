@@ -28,5 +28,6 @@ actions:
 
 notifications:
   - uses: email
+    on_success: true
     recipients:
       - abc@gmail.com
